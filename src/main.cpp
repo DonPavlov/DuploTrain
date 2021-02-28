@@ -4,6 +4,8 @@
 #include <WiFiUdp.h>
 #include <Wifi.h>
 
+#include <cstring>
+
 #include "Lpf2Hub.h"
 #include "secret.h"
 
@@ -51,6 +53,7 @@ void speedometerSensorCallback(void *hub, byte portNumber,
                                DeviceType deviceType, uint8_t *pData);
 void colorSensorCallback(void *hub, byte portNumber, DeviceType deviceType,
                          uint8_t *pData);
+void telPrint(uint8_t *dataArray, size_t length);
 
 void setup() {
   Serial.begin(115200);
@@ -79,25 +82,25 @@ void setup() {
 // main loop
 void loop() {
   // // connect flow
-  // if (myHub.isConnecting()) {
-  //   myHub.connectHub();
-  //   if (myHub.isConnected()) {
-  //     Serial.println("Connected to Duplo Hub");
+  if (myHub.isConnecting()) {
+    myHub.connectHub();
+    if (myHub.isConnected()) {
+      Serial.println("Connected to Duplo Hub");
 
-  //     delay(200);
-  //     // connect color sensor and activate it for updates
-  //     myHub.activatePortDevice((byte)DuploTrainHubPort::SPEEDOMETER,
-  //                              speedometerSensorCallback);
-  //     delay(200);
-  //     // connect speed sensor and activate it for updates
-  //     myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR,
-  //                              colorSensorCallback);
-  //     delay(200);
-  //     myHub.setLedColor(GREEN);
-  //   } else {
-  //     Serial.println("Failed to connect to Duplo Hub");
-  //   }
-  // }
+      delay(200);
+      // connect color sensor and activate it for updates
+      myHub.activatePortDevice((byte)DuploTrainHubPort::SPEEDOMETER,
+                               speedometerSensorCallback);
+      delay(200);
+      // connect speed sensor and activate it for updates
+      myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR,
+                               colorSensorCallback);
+      delay(200);
+      myHub.setLedColor(GREEN);
+    } else {
+      Serial.println("Failed to connect to Duplo Hub");
+    }
+  }
 
   recvData();
   handleTelnetClients();
@@ -106,20 +109,15 @@ void loop() {
 
 void recvData() {
   if (Serial.available() > 0) {
-    size_t len = Serial.available();
+    String incomingString = Serial.readStringUntil('\n');
+    size_t len = incomingString.length();
     uint8_t sbuf[len];
-    Serial.readBytes(sbuf, len);
+    incomingString.toCharArray((char *)sbuf, len);
     // push UART data to all connected telnet clients
-    if (wifiMulti.run() == WL_CONNECTED) {
-      for (uint8_t i = 0; i < MAX_SRV_CLIENTS; i++) {
-        if (serverClients[i] && serverClients[i].connected()) {
-          serverClients[i].write(sbuf, len);
-          delay(1);
-        }
-      }
-    }
+    telPrint(sbuf, len);
 
-    // TODO (ph) strip received string and put it into receivedData
+    incomingString.trim();
+    receivedData = (uint8_t)incomingString.toInt();
   }
 }
 
@@ -279,5 +277,17 @@ void handleTelnetClients() {
       if (serverClients[i]) serverClients[i].stop();
     }
     delay(1000);
+  }
+}
+
+// function to print to Telnet
+void telPrint(uint8_t *dataArray, size_t length) {
+  if (wifiMulti.run() == WL_CONNECTED) {
+    for (uint8_t i = 0; i < MAX_SRV_CLIENTS; i++) {
+      if (serverClients[i] && serverClients[i].connected()) {
+        serverClients[i].write(dataArray, length);
+        delay(1);
+      }
+    }
   }
 }
