@@ -12,7 +12,8 @@
 #define HOST_NAME "duplotrain"
 #define USE_MDNS true
 #define MAX_SRV_CLIENTS 1
-IPAddress local_IP(192, 168, 100, 124);
+
+IPAddress local_IP(192, 168, 100, 123);
 // Set your Gateway IP address
 IPAddress gateway(192, 168, 100, 1);
 IPAddress subnet(255, 255, 255, 0);
@@ -41,6 +42,7 @@ byte motorPort = (byte)DuploTrainHubPort::MOTOR;
 WiFiMulti wifiMulti;
 WiFiServer server(23);
 WiFiClient serverClients[MAX_SRV_CLIENTS];
+char recv_buffer[1] = {};
 
 void recvData();
 void handleRecvData();
@@ -103,60 +105,84 @@ void loop() {
   }
 
   recvData();
-  handleTelnetClients();
   handleRecvData();
+  handleTelnetClients();
 }
 
 void recvData() {
-  if (Serial.available() > 0) {
-    String incomingString = Serial.readStringUntil('\n');
-    size_t len = incomingString.length();
-    uint8_t sbuf[len];
-    incomingString.toCharArray((char *)sbuf, len);
-    // push UART data to all connected telnet clients
-    telPrint(sbuf, len);
+  if (Serial.available()) {
+    recv_buffer[0] = Serial.read();
+    Serial.write(recv_buffer[0]);
+    uint8_t sbuf[3];
+    sbuf[0] = (uint8_t)recv_buffer[0];
+    sbuf[0] = sbuf[0] + 48;  // make ascii number
+    sbuf[1] = (uint8_t)'\n';
+    sbuf[2] = (uint8_t)'\r';
+    telPrint(sbuf, 3);
+    receivedData = (uint8_t)recv_buffer[0];
+    // if (Serial.available() > 0) {
+    //   String incomingString = Serial.readStringUntil('\n');
+    //   size_t len = incomingString.length();
+    //   uint8_t sbuf[len];
+    //   incomingString.toCharArray((char *)sbuf, len);
+    //   // push UART data to all connected telnet clients
+    //   telPrint(sbuf, len);
 
-    incomingString.trim();
-    receivedData = (uint8_t)incomingString.toInt();
+    //   incomingString.trim();
+    //   receivedData = (uint8_t)incomingString.toInt();
+    // }
+  }else {
+    receivedData = TRAIN_NOPE;
   }
 }
 
 void handleRecvData() {
-  if (true == newData) {
-    switch (receivedData) {
-      case TRAIN_FORWARD:
-        myHub.setBasicMotorSpeed(motorPort, 50);
-        break;
-      case TRAIN_BACKWARD:
-        myHub.setBasicMotorSpeed(motorPort, -50);
-        break;
-      case TRAIN_STOP:
-        myHub.setBasicMotorSpeed(motorPort, 0);
-        myHub.playSound((byte)DuploTrainBaseSound::BRAKE);
-        break;
-      case TRAIN_HORN:
-        myHub.playSound((byte)DuploTrainBaseSound::HORN);
-        break;
-      case TRAIN_BRAKE:
-        myHub.setBasicMotorSpeed(motorPort, 0);
-        myHub.playSound((byte)DuploTrainBaseSound::BRAKE);
-        break;
-      case TRAIN_REFILL:
-        myHub.playSound((byte)DuploTrainBaseSound::WATER_REFILL);
-        break;
-      case TRAIN_LIGHT:
-        static uint8_t colorTrain = 0u;
-        myHub.setLedColor((Color)colorTrain);
-        colorTrain++;
-        if (colorTrain > 10) colorTrain = 0u;
-        break;
-      case TRAIN_STEAM:
-        myHub.playSound((byte)DuploTrainBaseSound::WATER_REFILL);
-        break;
-      default:
-        break;
+  switch (receivedData) {
+    case TRAIN_FORWARD: {
+      myHub.setBasicMotorSpeed(motorPort, 50);
+      Serial.println("Forward");
+      break;
     }
-    newData = false;
+    case TRAIN_BACKWARD: {
+      myHub.setBasicMotorSpeed(motorPort, -50);
+      break;
+    }
+    case TRAIN_STOP: {
+      myHub.setBasicMotorSpeed(motorPort, 0);
+      myHub.playSound((byte)DuploTrainBaseSound::BRAKE);
+      break;
+    }
+    case TRAIN_HORN: {
+      myHub.playSound((byte)DuploTrainBaseSound::HORN);
+      break;
+    }
+    case TRAIN_BRAKE: {
+      myHub.setBasicMotorSpeed(motorPort, 0);
+      myHub.playSound((byte)DuploTrainBaseSound::BRAKE);
+      break;
+    }
+    case TRAIN_REFILL: {
+      myHub.playSound((byte)DuploTrainBaseSound::WATER_REFILL);
+      break;
+    }
+    case TRAIN_LIGHT: {
+      static uint8_t colorTrain = 0u;
+      myHub.setLedColor((Color)colorTrain);
+      colorTrain++;
+      if (colorTrain > 10) {
+        colorTrain = 0u;
+      }
+      break;
+    }
+    case TRAIN_STEAM: {
+      myHub.playSound((byte)DuploTrainBaseSound::WATER_REFILL);
+      break;
+    }
+    case TRAIN_NOPE: {
+      break;
+    }
+    default:
+      break;
   }
 }
 
