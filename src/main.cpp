@@ -1,73 +1,9 @@
-#include <Arduino.h>
-#ifdef DEBUGWIFI
-#include <ESPmDNS.h>
-#include <WiFiMulti.h>
-#include <WiFiUdp.h>
-#include <Wifi.h>
-#endif
-
-#include <cstring>
-
-#include "Lpf2Hub.h"
-#include "secret.h"
-#ifdef DEBUGWIFI
-#define HOST_NAME "duplotrain"
-#define USE_MDNS true
-#define MAX_SRV_CLIENTS 1
-
-IPAddress local_IP(192, 168, 100, 123);
-// Set your Gateway IP address
-IPAddress gateway(192, 168, 100, 1);
-IPAddress subnet(255, 255, 255, 0);
-IPAddress primaryDNS(8, 8, 8, 8);    // optional
-IPAddress secondaryDNS(8, 8, 4, 4);  // optional
-#endif
-
-// Train control
-const uint8_t TRAIN_FORWARD = 1;    // U
-const uint8_t TRAIN_BACKWARD = 2;   // D
-const uint8_t TRAIN_STOP = 3;       // R1
-const uint8_t TRAIN_BRAKE = 4;      // R2
-const uint8_t TRAIN_REFILL = 5;     // B1
-const uint8_t TRAIN_HORN = 6;       // B2
-const uint8_t TRAIN_DEPARTURE = 7;  // R3
-const uint8_t TRAIN_STEAM = 8;      // B3
-const uint8_t TRAIN_LIGHT = 9;      // L
-const uint8_t TRAIN_NOPE = 0u;
-
-// create a hub instance
-Lpf2Hub myHub;
-uint8_t receivedData;
-boolean newData = false;
-
-byte motorPort = (byte)DuploTrainHubPort::MOTOR;
-#ifdef DEBUGWIFI
-
-WiFiMulti wifiMulti;
-WiFiServer server(23);
-WiFiClient serverClients[MAX_SRV_CLIENTS];
-#endif
-char recv_buffer[1] = {};
-
-void recvData();
-void handleRecvData();
-#ifdef DEBUGWIFI
-void waitForConnection();
-void waitForDisconnection();
-void telnetConnected();
-void telnetDisconnected();
-void handleTelnetClients();
-void telPrint(uint8_t *dataArray, size_t length);
-#endif
-
-void speedometerSensorCallback(void *hub, byte portNumber,
-                               DeviceType deviceType, uint8_t *pData);
-void colorSensorCallback(void *hub, byte portNumber, DeviceType deviceType,
-                         uint8_t *pData);
+#include "main.h"
 
 void setup() {
+  startMillis = millis();
   Serial.begin(115200);
-  delay(100);
+  delay(1000);
   Serial.println("\r\nBooting ESP-Train");
 #ifdef DEBUGWIFI
   Serial.print("\n\nConnecting to WiFi ");
@@ -96,24 +32,26 @@ void loop() {
     myHub.connectHub();
     if (myHub.isConnected()) {
       Serial.println("Connected to Duplo Hub");
+      delay(200);
 
-      delay(200);
       // connect color sensor and activate it for updates
-      myHub.activatePortDevice((byte)DuploTrainHubPort::SPEEDOMETER,
-                               speedometerSensorCallback);
-      delay(200);
+      // myHub.activatePortDevice((byte)DuploTrainHubPort::SPEEDOMETER,
+      //  speedometerSensorCallback);
+      // delay(200);
       // connect speed sensor and activate it for updates
-      myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR,
-                               colorSensorCallback);
-      delay(200);
-      myHub.setLedColor(GREEN);
+      // myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR,
+      //  colorSensorCallback);
+      // delay(200);
+      myHub.setLedColor((Color)PURPLE);
     } else {
       Serial.println("Failed to connect to Duplo Hub");
     }
   }
 
   recvData();
-  handleRecvData();
+  if (myHub.isConnected()) {
+    handleRecvData();
+  }
 #ifdef DEBUGWIFI
   handleTelnetClients();
 #endif
@@ -122,13 +60,14 @@ void loop() {
 void recvData() {
   if (Serial.available()) {
     recv_buffer[0] = Serial.read();
-    Serial.write(recv_buffer[0]);
+    Serial.println(recv_buffer[0]);
     uint8_t sbuf[3];
     sbuf[0] = (uint8_t)recv_buffer[0];
     sbuf[0] = sbuf[0] + 48;  // make ascii number
     sbuf[1] = (uint8_t)'\n';
     sbuf[2] = (uint8_t)'\r';
-    receivedData = (uint8_t)recv_buffer[0];
+    receivedData = atoi(recv_buffer);
+
 #ifdef DEBUGWIFI
     telPrint(sbuf, 3);
     //   if (Serial.available() > 0) {
@@ -151,35 +90,72 @@ void recvData() {
 void handleRecvData() {
   switch (receivedData) {
     case TRAIN_FORWARD: {
-      myHub.setBasicMotorSpeed(motorPort, 50);
+      if(TRAIN_FORWARD != TRAIN_CURRENT_STATE) {
+        TRAIN_SPEEDF = 50;
+      }
+      if(TRAIN_BACKWARD == TRAIN_CURRENT_STATE) {
+        myHub.stopBasicMotor(motorPort);
+      }
+      if(TRAIN_FORWARD == TRAIN_CURRENT_STATE) {
+        TRAIN_SPEEDF += 10;
+        if(TRAIN_SPEEDF > 100) { TRAIN_SPEEDF = 100;}
+      }
+
+      myHub.setBasicMotorSpeed(motorPort, TRAIN_SPEEDF);
       Serial.println("Forward");
+      TRAIN_CURRENT_STATE = TRAIN_FORWARD;
       break;
     }
     case TRAIN_BACKWARD: {
-      myHub.setBasicMotorSpeed(motorPort, -50);
+      if(TRAIN_BACKWARD != TRAIN_CURRENT_STATE) {
+        TRAIN_SPEEDB = -50;
+      }
+      if(TRAIN_FORWARD == TRAIN_CURRENT_STATE) {
+        myHub.stopBasicMotor(motorPort);
+      }
+      if(TRAIN_BACKWARD == TRAIN_CURRENT_STATE) {
+        TRAIN_SPEEDB -= 10;
+        if(TRAIN_SPEEDB < -100) { TRAIN_SPEEDB = -100;}
+      }
+      myHub.setBasicMotorSpeed(motorPort, TRAIN_SPEEDB);
+      Serial.println("Backward");
+      TRAIN_CURRENT_STATE = TRAIN_BACKWARD;
       break;
     }
     case TRAIN_STOP: {
-      myHub.setBasicMotorSpeed(motorPort, 0);
-      myHub.playSound((byte)DuploTrainBaseSound::BRAKE);
+      myHub.stopBasicMotor(motorPort);
+      delay(200);
+      playSounds((byte)DuploTrainBaseSound::BRAKE);
+      Serial.println("Stop");
+      TRAIN_CURRENT_STATE = TRAIN_STOP;
       break;
     }
     case TRAIN_HORN: {
-      myHub.playSound((byte)DuploTrainBaseSound::HORN);
+      playSounds((byte)DuploTrainBaseSound::HORN);
+      Serial.println("Horn");
       break;
     }
     case TRAIN_BRAKE: {
-      myHub.setBasicMotorSpeed(motorPort, 0);
-      myHub.playSound((byte)DuploTrainBaseSound::BRAKE);
+      myHub.stopBasicMotor(motorPort);
+      delay(200);
+      playSounds((byte)DuploTrainBaseSound::BRAKE);
+      Serial.println("Brake");
+      TRAIN_CURRENT_STATE = TRAIN_BRAKE;
       break;
     }
     case TRAIN_REFILL: {
-      myHub.playSound((byte)DuploTrainBaseSound::WATER_REFILL);
+      myHub.stopBasicMotor(motorPort);
+      delay(200);
+      playSounds((byte)DuploTrainBaseSound::WATER_REFILL);
+      Serial.println("Refill");
+      TRAIN_CURRENT_STATE = TRAIN_REFILL;
       break;
     }
     case TRAIN_LIGHT: {
       static uint8_t colorTrain = 0u;
       myHub.setLedColor((Color)colorTrain);
+      Serial.print("Color: ");
+      Serial.println(COLOR_STRING[(Color)colorTrain]);
       colorTrain++;
       if (colorTrain > 10) {
         colorTrain = 0u;
@@ -187,7 +163,13 @@ void handleRecvData() {
       break;
     }
     case TRAIN_STEAM: {
-      myHub.playSound((byte)DuploTrainBaseSound::WATER_REFILL);
+      playSounds((byte)DuploTrainBaseSound::WATER_REFILL);
+      Serial.println("Steam");
+      break;
+    }
+    case TRAIN_DEPARTURE: {
+      playSounds((byte)DuploTrainBaseSound::STATION_DEPARTURE);
+      Serial.println("Departure");
       break;
     }
     case TRAIN_NOPE: {
@@ -198,6 +180,20 @@ void handleRecvData() {
   }
 }
 
+/**
+ * Only play a sound if the counter elapsed, to avoid multi sounds
+ **/
+void playSounds(byte sound) {
+  currentMillis = millis();
+  if (currentMillis - startMillis >= soundTimer) {
+    // TODO(ph) play a sound
+    myHub.playSound(sound);
+    startMillis = millis();
+  }
+}
+
+
+// currently unused
 void colorSensorCallback(void *hub, byte portNumber, DeviceType deviceType,
                          uint8_t *pData) {
   Lpf2Hub *myHub = (Lpf2Hub *)hub;
@@ -218,6 +214,7 @@ void colorSensorCallback(void *hub, byte portNumber, DeviceType deviceType,
   }
 }
 
+// currently unused
 void speedometerSensorCallback(void *hub, byte portNumber,
                                DeviceType deviceType, uint8_t *pData) {
   Lpf2Hub *myHub = (Lpf2Hub *)hub;
