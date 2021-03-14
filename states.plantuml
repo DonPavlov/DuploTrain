@@ -1,0 +1,20 @@
+@startuml
+[*] --> Connecting
+
+Connecting -> Connecting : wait for connect
+' Remove wifi debugging
+' Connecting -----> [*] : wifi connection timeout
+Connecting --> Idle : connected
+
+Idle --> ParseData : receivedData
+ParseData --> changeSpeed : speeddata
+ParseData --> playSound : sounddata
+changeSpeed -> Idle
+playSound -> Idle
+
+' Test first the basic functionality
+' Idle --> changeSpeed : movement
+' Idle --> changeSpeed : lightsensor
+' Idle --> playSound : lightsensor
+
+@enduml

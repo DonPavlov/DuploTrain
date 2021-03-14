@@ -1,14 +1,16 @@
 #include <Arduino.h>
+#ifdef DEBUGWIFI
 #include <ESPmDNS.h>
 #include <WiFiMulti.h>
 #include <WiFiUdp.h>
 #include <Wifi.h>
+#endif
 
 #include <cstring>
 
 #include "Lpf2Hub.h"
 #include "secret.h"
-
+#ifdef DEBUGWIFI
 #define HOST_NAME "duplotrain"
 #define USE_MDNS true
 #define MAX_SRV_CLIENTS 1
@@ -19,6 +21,7 @@ IPAddress gateway(192, 168, 100, 1);
 IPAddress subnet(255, 255, 255, 0);
 IPAddress primaryDNS(8, 8, 8, 8);    // optional
 IPAddress secondaryDNS(8, 8, 4, 4);  // optional
+#endif
 
 // Train control
 const uint8_t TRAIN_FORWARD = 1;    // U
@@ -38,38 +41,43 @@ uint8_t receivedData;
 boolean newData = false;
 
 byte motorPort = (byte)DuploTrainHubPort::MOTOR;
+#ifdef DEBUGWIFI
 
 WiFiMulti wifiMulti;
 WiFiServer server(23);
 WiFiClient serverClients[MAX_SRV_CLIENTS];
+#endif
 char recv_buffer[1] = {};
 
 void recvData();
 void handleRecvData();
+#ifdef DEBUGWIFI
 void waitForConnection();
 void waitForDisconnection();
 void telnetConnected();
 void telnetDisconnected();
 void handleTelnetClients();
+void telPrint(uint8_t *dataArray, size_t length);
+#endif
+
 void speedometerSensorCallback(void *hub, byte portNumber,
                                DeviceType deviceType, uint8_t *pData);
 void colorSensorCallback(void *hub, byte portNumber, DeviceType deviceType,
                          uint8_t *pData);
-void telPrint(uint8_t *dataArray, size_t length);
 
 void setup() {
   Serial.begin(115200);
   delay(100);
+  Serial.println("\r\nBooting ESP-Train");
+#ifdef DEBUGWIFI
   Serial.print("\n\nConnecting to WiFi ");
   if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
     Serial.println("STA Failed to configure");
   }
   wifiMulti.addAP(ssid, password);
   waitForConnection();
-
   server.begin();
   server.setNoDelay(true);
-
   String hostNameWifi = HOST_NAME;
   hostNameWifi.concat(".local");
   MDNS.begin(HOST_NAME);
@@ -77,7 +85,7 @@ void setup() {
   Serial.print("Ready! Use 'telnet ");
   Serial.print(WiFi.localIP());
   Serial.println(" 23' to connect");
-
+#endif
   myHub.init();
 }
 
@@ -106,7 +114,9 @@ void loop() {
 
   recvData();
   handleRecvData();
+#ifdef DEBUGWIFI
   handleTelnetClients();
+#endif
 }
 
 void recvData() {
@@ -118,20 +128,22 @@ void recvData() {
     sbuf[0] = sbuf[0] + 48;  // make ascii number
     sbuf[1] = (uint8_t)'\n';
     sbuf[2] = (uint8_t)'\r';
-    telPrint(sbuf, 3);
     receivedData = (uint8_t)recv_buffer[0];
-    // if (Serial.available() > 0) {
-    //   String incomingString = Serial.readStringUntil('\n');
-    //   size_t len = incomingString.length();
-    //   uint8_t sbuf[len];
-    //   incomingString.toCharArray((char *)sbuf, len);
-    //   // push UART data to all connected telnet clients
-    //   telPrint(sbuf, len);
+#ifdef DEBUGWIFI
+    telPrint(sbuf, 3);
+    //   if (Serial.available() > 0) {
+    //     String incomingString = Serial.readStringUntil('\n');
+    //     size_t len = incomingString.length();
+    //     uint8_t sbuf[len];
+    //     incomingString.toCharArray((char *)sbuf, len);
+    //     // push UART data to all connected telnet clients
+    //     telPrint(sbuf, len);
 
     //   incomingString.trim();
     //   receivedData = (uint8_t)incomingString.toInt();
     // }
-  }else {
+#endif
+  } else {
     receivedData = TRAIN_NOPE;
   }
 }
@@ -186,39 +198,6 @@ void handleRecvData() {
   }
 }
 
-void waitForConnection() {
-  Serial.println("Connecting Wifi ");
-  for (int loops = 10; loops > 0; loops--) {
-    if (wifiMulti.run() == WL_CONNECTED) {
-      Serial.println("");
-      Serial.print("WiFi connected ");
-      Serial.print("IP address: ");
-      Serial.println(WiFi.localIP());
-      break;
-    } else {
-      Serial.println(loops);
-      delay(1000);
-    }
-  }
-  if (wifiMulti.run() != WL_CONNECTED) {
-    Serial.println("WiFi connect failed");
-    delay(1000);
-    ESP.restart();
-  }
-}
-
-void waitForDisconnection() {
-  while (WiFi.status() == WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println(" Disconnected!");
-}
-
-void telnetConnected() { Serial.println("Telnet connection established."); }
-
-void telnetDisconnected() { Serial.println("Telnet connection closed."); }
-
 void colorSensorCallback(void *hub, byte portNumber, DeviceType deviceType,
                          uint8_t *pData) {
   Lpf2Hub *myHub = (Lpf2Hub *)hub;
@@ -259,6 +238,40 @@ void speedometerSensorCallback(void *hub, byte portNumber,
     }
   }
 }
+
+#ifdef DEBUGWIFI
+void waitForConnection() {
+  Serial.println("Connecting Wifi ");
+  for (int loops = 10; loops > 0; loops--) {
+    if (wifiMulti.run() == WL_CONNECTED) {
+      Serial.println("");
+      Serial.print("WiFi connected ");
+      Serial.print("IP address: ");
+      Serial.println(WiFi.localIP());
+      break;
+    } else {
+      Serial.println(loops);
+      delay(1000);
+    }
+  }
+  if (wifiMulti.run() != WL_CONNECTED) {
+    Serial.println("WiFi connect failed");
+    delay(1000);
+    ESP.restart();
+  }
+}
+
+void waitForDisconnection() {
+  while (WiFi.status() == WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println(" Disconnected!");
+}
+
+void telnetConnected() { Serial.println("Telnet connection established."); }
+
+void telnetDisconnected() { Serial.println("Telnet connection closed."); }
 
 void handleTelnetClients() {
   uint8_t i = 0;
@@ -317,3 +330,4 @@ void telPrint(uint8_t *dataArray, size_t length) {
     }
   }
 }
+#endif
