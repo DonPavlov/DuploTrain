@@ -30,16 +30,15 @@ const uint8_t TRAIN_FORWARD = 1u;    // U   works
 const uint8_t TRAIN_BACKWARD = 2u;   // D   works
 const uint8_t TRAIN_LIGHT = 3u;      // R1  works (left)
 const uint8_t TRAIN_BRAKE = 4u;      // R2  works (no sound)
-const uint8_t TRAIN_REFILL = 5u;     // B1  Not really??
+const uint8_t TRAIN_REFILL = 5u;     // B1  works
 const uint8_t TRAIN_HORN = 6u;       // B2  works
-const uint8_t TRAIN_DEPARTURE = 7u;  // R3  Left button???? why
-const uint8_t TRAIN_STEAM = 8u;      // B3  kinda, but left not right???
-const uint8_t TRAIN_STOP = 9u;      // L
+const uint8_t TRAIN_DEPARTURE = 7u;  // R3  works
+const uint8_t TRAIN_STEAM = 8u;      // B3
 const uint8_t TRAIN_NOPE = 0u;
 
 uint8_t TRAIN_CURRENT_STATE = 0u;
-int8_t TRAIN_SPEEDF = 50;
-int8_t TRAIN_SPEEDB = -50;
+int8_t TRAIN_SPEEDF = 30;
+int8_t TRAIN_SPEEDB = -30;
 // create a hub instance
 Lpf2Hub myHub;
 uint8_t receivedData;
@@ -49,7 +48,7 @@ byte motorPort = (byte)DuploTrainHubPort::MOTOR;
 
 unsigned long startMillis;
 unsigned long currentMillis;
-const unsigned long soundTimer = 3000;  //the value is a number of milliseconds
+const unsigned long soundTimer = 333;  //the value is a number of milliseconds
 
 #ifdef DEBUGWIFI
 

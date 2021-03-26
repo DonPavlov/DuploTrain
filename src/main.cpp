@@ -1,9 +1,11 @@
 #include "main.h"
 
+// TODO(ph) Add default pushing pulling behaviour with updated speedvalues from rest of the code (connect flow)
+
+
 void setup() {
   startMillis = millis();
   Serial.begin(115200);
-  delay(1000);
   Serial.println("\r\nBooting ESP-Train");
 #ifdef DEBUGWIFI
   Serial.print("\n\nConnecting to WiFi ");
@@ -91,7 +93,7 @@ void handleRecvData() {
   switch (receivedData) {
     case TRAIN_FORWARD: {
       if(TRAIN_FORWARD != TRAIN_CURRENT_STATE) {
-        TRAIN_SPEEDF = 50;
+        TRAIN_SPEEDF = 30;
       }
       if(TRAIN_BACKWARD == TRAIN_CURRENT_STATE) {
         myHub.stopBasicMotor(motorPort);
@@ -108,7 +110,7 @@ void handleRecvData() {
     }
     case TRAIN_BACKWARD: {
       if(TRAIN_BACKWARD != TRAIN_CURRENT_STATE) {
-        TRAIN_SPEEDB = -50;
+        TRAIN_SPEEDB = -30;
       }
       if(TRAIN_FORWARD == TRAIN_CURRENT_STATE) {
         myHub.stopBasicMotor(motorPort);
@@ -120,14 +122,6 @@ void handleRecvData() {
       myHub.setBasicMotorSpeed(motorPort, TRAIN_SPEEDB);
       Serial.println("Backward");
       TRAIN_CURRENT_STATE = TRAIN_BACKWARD;
-      break;
-    }
-    case TRAIN_STOP: {
-      myHub.stopBasicMotor(motorPort);
-      delay(200);
-      playSounds((byte)DuploTrainBaseSound::BRAKE);
-      Serial.println("Stop");
-      TRAIN_CURRENT_STATE = TRAIN_STOP;
       break;
     }
     case TRAIN_HORN: {
@@ -163,7 +157,7 @@ void handleRecvData() {
       break;
     }
     case TRAIN_STEAM: {
-      playSounds((byte)DuploTrainBaseSound::WATER_REFILL);
+      playSounds((byte)DuploTrainBaseSound::STEAM);
       Serial.println("Steam");
       break;
     }
