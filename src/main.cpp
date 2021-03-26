@@ -1,8 +1,5 @@
 #include "main.h"
 
-// TODO(ph) Add default pushing pulling behaviour with updated speedvalues from rest of the code (connect flow)
-
-
 void setup() {
   startMillis = millis();
   Serial.begin(115200);
@@ -35,15 +32,12 @@ void loop() {
     if (myHub.isConnected()) {
       Serial.println("Connected to Duplo Hub");
       delay(200);
-
       // connect color sensor and activate it for updates
-      // myHub.activatePortDevice((byte)DuploTrainHubPort::SPEEDOMETER,
-      //  speedometerSensorCallback);
-      // delay(200);
+      myHub.activatePortDevice((byte)DuploTrainHubPort::SPEEDOMETER, speedometerSensorCallback);
+      delay(200);
       // connect speed sensor and activate it for updates
-      // myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR,
-      //  colorSensorCallback);
-      // delay(200);
+      myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR, colorSensorCallback);
+      delay(200);
       myHub.setLedColor((Color)PURPLE);
     } else {
       Serial.println("Failed to connect to Duplo Hub");
@@ -186,8 +180,6 @@ void playSounds(byte sound) {
   }
 }
 
-
-// currently unused
 void colorSensorCallback(void *hub, byte portNumber, DeviceType deviceType,
                          uint8_t *pData) {
   Lpf2Hub *myHub = (Lpf2Hub *)hub;
@@ -208,7 +200,6 @@ void colorSensorCallback(void *hub, byte portNumber, DeviceType deviceType,
   }
 }
 
-// currently unused
 void speedometerSensorCallback(void *hub, byte portNumber,
                                DeviceType deviceType, uint8_t *pData) {
   Lpf2Hub *myHub = (Lpf2Hub *)hub;
@@ -218,11 +209,11 @@ void speedometerSensorCallback(void *hub, byte portNumber,
     Serial.print("Speed: ");
     Serial.println(speed);
     if (speed > 10) {
-      Serial.println("Forward");
-      myHub->setBasicMotorSpeed(motorPort, 50);
+      // Serial.println("Forward");
+      myHub->setBasicMotorSpeed(motorPort, TRAIN_SPEEDF);
     } else if (speed < -10) {
       Serial.println("Back");
-      myHub->setBasicMotorSpeed(motorPort, -50);
+      myHub->setBasicMotorSpeed(motorPort, TRAIN_SPEEDB);
     } else {
       Serial.println("Stop");
       myHub->stopBasicMotor(motorPort);
