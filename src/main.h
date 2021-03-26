@@ -43,6 +43,7 @@ int8_t TRAIN_SPEEDB = -30;
 Lpf2Hub myHub;
 uint8_t receivedData;
 boolean newData = false;
+String esp2mega = "";
 
 byte motorPort = (byte)DuploTrainHubPort::MOTOR;
 

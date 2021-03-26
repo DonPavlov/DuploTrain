@@ -32,21 +32,23 @@ void loop() {
   if (myHub.isConnecting()) {
     myHub.connectHub();
     if (myHub.isConnected()) {
-      #ifdef SERIALDBG
+#ifdef SERIALDBG
       Serial.println("train connected");
-      #endif
+#endif
       delay(200);
       // connect color sensor and activate it for updates
-      myHub.activatePortDevice((byte)DuploTrainHubPort::SPEEDOMETER, speedometerSensorCallback);
+      myHub.activatePortDevice((byte)DuploTrainHubPort::SPEEDOMETER,
+                               speedometerSensorCallback);
       delay(200);
       // connect speed sensor and activate it for updates
-      myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR, colorSensorCallback);
+      myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR,
+                               colorSensorCallback);
       delay(200);
       myHub.setLedColor((Color)PURPLE);
     } else {
-      #ifdef SERIALDBG
+#ifdef SERIALDBG
       Serial.println("train connect failed");
-      #endif
+#endif
     }
   }
   recvData();
@@ -61,9 +63,9 @@ void loop() {
 void recvData() {
   if (Serial.available()) {
     recv_buffer[0] = Serial.read();
-      #ifdef SERIALDBG
+#ifdef SERIALDBG
     Serial.println(recv_buffer[0]);
-    #endif
+#endif
     uint8_t sbuf[3];
     sbuf[0] = (uint8_t)recv_buffer[0];
     sbuf[0] = sbuf[0] + 48;  // make ascii number
@@ -93,56 +95,63 @@ void recvData() {
 void handleRecvData() {
   switch (receivedData) {
     case TRAIN_FORWARD: {
-      if(TRAIN_FORWARD != TRAIN_CURRENT_STATE) {
+      if (TRAIN_FORWARD != TRAIN_CURRENT_STATE) {
         TRAIN_SPEEDF = 30;
       }
-      if(TRAIN_BACKWARD == TRAIN_CURRENT_STATE) {
+      if (TRAIN_BACKWARD == TRAIN_CURRENT_STATE) {
         myHub.stopBasicMotor(motorPort);
       }
-      if(TRAIN_FORWARD == TRAIN_CURRENT_STATE) {
+      if (TRAIN_FORWARD == TRAIN_CURRENT_STATE) {
         TRAIN_SPEEDF += 10;
-        if(TRAIN_SPEEDF > 100) { TRAIN_SPEEDF = 100;}
+        if (TRAIN_SPEEDF > 100) {
+          TRAIN_SPEEDF = 100;
+        }
       }
 
       myHub.setBasicMotorSpeed(motorPort, TRAIN_SPEEDF);
-      #ifdef SERIALDBG
+      esp2mega = "F" + TRAIN_SPEEDF;
+      Serial.println(esp2mega);
+#ifdef SERIALDBG
       Serial.println("Fwd: ");
-      #endif
+#endif
       TRAIN_CURRENT_STATE = TRAIN_FORWARD;
       break;
     }
     case TRAIN_BACKWARD: {
-      if(TRAIN_BACKWARD != TRAIN_CURRENT_STATE) {
+      if (TRAIN_BACKWARD != TRAIN_CURRENT_STATE) {
         TRAIN_SPEEDB = -30;
       }
-      if(TRAIN_FORWARD == TRAIN_CURRENT_STATE) {
+      if (TRAIN_FORWARD == TRAIN_CURRENT_STATE) {
         myHub.stopBasicMotor(motorPort);
       }
-      if(TRAIN_BACKWARD == TRAIN_CURRENT_STATE) {
+      if (TRAIN_BACKWARD == TRAIN_CURRENT_STATE) {
         TRAIN_SPEEDB -= 10;
-        if(TRAIN_SPEEDB < -100) { TRAIN_SPEEDB = -100;}
+        if (TRAIN_SPEEDB < -100) {
+          TRAIN_SPEEDB = -100;
+        }
       }
       myHub.setBasicMotorSpeed(motorPort, TRAIN_SPEEDB);
-      #ifdef SERIALDBG
+      esp2mega = "B" + TRAIN_SPEEDB;
+#ifdef SERIALDBG
       Serial.println("Back: ");
-      #endif
+#endif
       TRAIN_CURRENT_STATE = TRAIN_BACKWARD;
       break;
     }
     case TRAIN_HORN: {
       playSounds((byte)DuploTrainBaseSound::HORN);
-      #ifdef SERIALDBG
+#ifdef SERIALDBG
       Serial.println("Horn");
-      #endif
+#endif
       break;
     }
     case TRAIN_BRAKE: {
       myHub.stopBasicMotor(motorPort);
       delay(200);
       playSounds((byte)DuploTrainBaseSound::BRAKE);
-      #ifdef SERIALDBG
+#ifdef SERIALDBG
       Serial.println("Brake");
-      #endif
+#endif
       TRAIN_CURRENT_STATE = TRAIN_BRAKE;
       break;
     }
@@ -150,19 +159,21 @@ void handleRecvData() {
       myHub.stopBasicMotor(motorPort);
       delay(200);
       playSounds((byte)DuploTrainBaseSound::WATER_REFILL);
-      #ifdef SERIALDBG
+#ifdef SERIALDBG
       Serial.println("Refill");
-      #endif
+#endif
       TRAIN_CURRENT_STATE = TRAIN_REFILL;
       break;
     }
     case TRAIN_LIGHT: {
       static uint8_t colorTrain = 0u;
       myHub.setLedColor((Color)colorTrain);
-      #ifdef SERIALDBG
+      esp2mega = "C" + colorTrain;
+      Serial.println(esp2mega);
+#ifdef SERIALDBG
       Serial.print("Color: ");
       Serial.println(COLOR_STRING[(Color)colorTrain]);
-      #endif
+#endif
       colorTrain++;
       if (colorTrain > 10) {
         colorTrain = 0u;
@@ -171,16 +182,16 @@ void handleRecvData() {
     }
     case TRAIN_STEAM: {
       playSounds((byte)DuploTrainBaseSound::STEAM);
-      #ifdef SERIALDBG
+#ifdef SERIALDBG
       Serial.println("Steam");
-      #endif
+#endif
       break;
     }
     case TRAIN_DEPARTURE: {
       playSounds((byte)DuploTrainBaseSound::STATION_DEPARTURE);
-      #ifdef SERIALDBG
+#ifdef SERIALDBG
       Serial.println("Departure");
-      #endif
+#endif
       break;
     }
     case TRAIN_NOPE: {
@@ -189,6 +200,7 @@ void handleRecvData() {
     default:
       break;
   }
+  esp2mega = "";
 }
 
 /**
@@ -197,7 +209,6 @@ void handleRecvData() {
 void playSounds(byte sound) {
   currentMillis = millis();
   if (currentMillis - startMillis >= soundTimer) {
-    // TODO(ph) play a sound
     myHub.playSound(sound);
     startMillis = millis();
   }
@@ -209,10 +220,10 @@ void colorSensorCallback(void *hub, byte portNumber, DeviceType deviceType,
 
   if (deviceType == DeviceType::DUPLO_TRAIN_BASE_COLOR_SENSOR) {
     int color = myHub->parseColor(pData);
-    #ifdef SERIALDBG
+#ifdef SERIALDBG
     Serial.print("Color: ");
     Serial.println(COLOR_STRING[color]);
-    #endif
+#endif
     myHub->setLedColor((Color)color);
 
     if (color == (byte)RED) {
@@ -231,25 +242,32 @@ void speedometerSensorCallback(void *hub, byte portNumber,
 
   if (deviceType == DeviceType::DUPLO_TRAIN_BASE_SPEEDOMETER) {
     int speed = myHub->parseSpeedometer(pData);
-    #ifdef SERIALDBG
+
+#ifdef SERIALDBG
     Serial.print("Fwd: ");
     Serial.println(TRAIN_SPEEDF);
-    #endif
+#endif
     if (speed > 10) {
-      #ifdef SERIALDBG
+#ifdef SERIALDBG
       Serial.println("Forward");
-      #endif
+#endif
       myHub->setBasicMotorSpeed(motorPort, TRAIN_SPEEDF);
+      esp2mega = "F" + TRAIN_SPEEDF;
+      Serial.println(esp2mega);
+      TRAIN_CURRENT_STATE = TRAIN_FORWARD;
     } else if (speed < -10) {
-      #ifdef SERIALDBG
+#ifdef SERIALDBG
       Serial.println("Back: ");
       Serial.println(TRAIN_SPEEDB);
-      #endif
+#endif
       myHub->setBasicMotorSpeed(motorPort, TRAIN_SPEEDB);
+      esp2mega = "B" + TRAIN_SPEEDB;
+      Serial.println(esp2mega);
+      TRAIN_CURRENT_STATE = TRAIN_BACKWARD;
     } else {
-      #ifdef SERIALDBG
+#ifdef SERIALDBG
       Serial.println("Stop");
-      #endif
+#endif
       myHub->stopBasicMotor(motorPort);
     }
   }
