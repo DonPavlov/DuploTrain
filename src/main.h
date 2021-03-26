@@ -29,11 +29,11 @@ IPAddress secondaryDNS(8, 8, 4, 4);  // optional
 const uint8_t TRAIN_FORWARD = 1u;    // U   works
 const uint8_t TRAIN_BACKWARD = 2u;   // D   works
 const uint8_t TRAIN_LIGHT = 3u;      // R1  works (left)
-const uint8_t TRAIN_BRAKE = 4u;      // R2  works (no sound)
+const uint8_t TRAIN_BRAKE = 4u;      // R2  works
 const uint8_t TRAIN_REFILL = 5u;     // B1  works
 const uint8_t TRAIN_HORN = 6u;       // B2  works
 const uint8_t TRAIN_DEPARTURE = 7u;  // R3  works
-const uint8_t TRAIN_STEAM = 8u;      // B3
+const uint8_t TRAIN_STEAM = 8u;      // B3  works
 const uint8_t TRAIN_NOPE = 0u;
 
 uint8_t TRAIN_CURRENT_STATE = 0u;
