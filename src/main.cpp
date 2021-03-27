@@ -36,16 +36,18 @@ void loop() {
       Serial.println("train connected");
 #endif
       delay(200);
+      myHub.setLedColor((Color)PURPLE);
       // connect speed sensor and activate it for updates
       // myHub.activatePortDevice((byte)DuploTrainHubPort::SPEEDOMETER,
       //                          speedometerSensorCallback);
       // delay(200);
-      // TODO(ph) eenable speed callback if possible without disturbing rest      myHub.setLedColor((Color)PURPLE);
+      // motion sensor deactivates the normal functionality of the train controlling it. So it is disabled.
 
+      // color sensor has too many false alarms
       // connect color sensor and activate it for updates
-      myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR,
-                               colorSensorCallback);
-      delay(200);
+      // myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR,
+      //                          colorSensorCallback);
+      // delay(200);
     } else {
 #ifdef SERIALDBG
       Serial.println("train connect failed");
