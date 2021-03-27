@@ -36,14 +36,16 @@ void loop() {
       Serial.println("train connected");
 #endif
       delay(200);
-      // connect color sensor and activate it for updates
-      myHub.activatePortDevice((byte)DuploTrainHubPort::SPEEDOMETER,
-                               speedometerSensorCallback);
-      delay(200);
       // connect speed sensor and activate it for updates
-      // myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR,
-      //                          colorSensorCallback);
-      // delay(200);  // TODO(ph) eenable speed callback if possible without disturbing rest      myHub.setLedColor((Color)PURPLE);
+      // myHub.activatePortDevice((byte)DuploTrainHubPort::SPEEDOMETER,
+      //                          speedometerSensorCallback);
+      // delay(200);
+      // TODO(ph) eenable speed callback if possible without disturbing rest      myHub.setLedColor((Color)PURPLE);
+
+      // connect color sensor and activate it for updates
+      myHub.activatePortDevice((byte)DuploTrainHubPort::COLOR,
+                               colorSensorCallback);
+      delay(200);
     } else {
 #ifdef SERIALDBG
       Serial.println("train connect failed");
